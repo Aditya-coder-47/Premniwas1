@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Prem Niwas – Renter Registration (Extended)</title>
+
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
+
+<style>
+:root{ --bg:#f3f3f3; --card:#ffffffaa; --text:#1c1c1c; --muted:#666; --accent:#0b84ff; --border:#333; }
+[data-theme="dark"]{ --bg:#1c1c1c; --card:#333333cc; --text:#fff; --muted:#ccc; --accent:#0b84ff; --border:#ccc; }
+body{ background:var(--bg); color:var(--text); font-family: Arial,Helvetica,sans-serif; margin:0; padding:18px; display:flex; justify-content:center; transition: background 0.3s, color 0.3s; }
+.container{ width:100%; max-width:1200px; background: var(--card); border-radius:10px; padding:18px; box-shadow:0 12px 30px rgba(0,0,0,0.25); box-sizing:border-box; position: relative; }
+.container::after{ content: ""; position: absolute; top:0; left:0; right:0; bottom:0; background-image: url('https://images.unsplash.com/photo-1593642532400-2682810df593?auto=format&fit=crop&w=1200&q=80'); background-size: cover; background-position: center; background-repeat: no-repeat; border-radius:10px; z-index:0; opacity:0.12; }
+.container::before{ content: ""; position:absolute; inset:0; border-radius:10px; z-index:1; background: linear-gradient(rgba(255,255,255,0.95), rgba(255,255,255,0.85)); }
+[data-theme="dark"] .container::before{ background: linear-gradient(rgba(0,0,0,0.9), rgba(0,0,0,0.85)); }
+.container>*{ position:relative; z-index:2; }
+h2{ margin:0; font-size:22px; color:var(--accent); font-weight:bold; }
+.grid{ display:grid; grid-template-columns:1fr 420px; gap:18px; margin-top:18px; }
+@media(max-width:900px){ .grid{ grid-template-columns:1fr; } .container{ max-width:100%; padding:10px; } }
+label{ display:block; margin-top:10px; font-size:14px; font-weight:bold; }
+input[type="text"], input[type="date"], select, textarea, input[type="file"]{ width:100%; padding:10px; margin-top:5px; border-radius:8px; border:2px solid var(--border); font-size:15px; box-sizing:border-box; background: var(--bg); color: var(--text); }
+textarea{ min-height:70px; resize:vertical; }
+.row{ display:flex; gap:10px; }
+.row>*{ flex:1; }
+.preview{ width:100%; height:220px; object-fit:cover; border-radius:8px; border:2px solid var(--border); background:var(--bg); }
+button{ padding:10px 14px; border-radius:8px; border:none; cursor:pointer; color:white; font-weight:bold; transition: background 0.3s; }
+/* main buttons */
+#aboutBtn{ background:#673AB7; }
+#clearBtn{ background:#455A64; }
+#pdfBtn{ background:#0277BD; }
+#whatsappBtn{ background:#25D366; }
+#SheetBtn{ background:#2E7D32; }
+#startCamBtn{ background:#EF6C00; }
+#snapBtn{ background:#D81B60; }
+#darkModeBtn{ background:#333; }
+#langSelect{ background:#6a1b9a; color:white; padding:8px; border-radius:8px; border:none; }
+/* signature button colors */
+#clearRenter, #clearOwner { background: #E53935; }   /* red */
+#saveRenter, #saveOwner { background: #4CAF50; }      /* green */
+/* small */
+.actions{ display:flex; gap:10px; margin-top:15px; flex-wrap:wrap; }
+.hr{ height:1px; background:var(--border); margin:15px 0; }
+.muted{ font-size:12px; color:var(--muted); margin-top:5px; }
+#aboutModal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:999; }
+.modal-box{ background:var(--card); padding:20px; width:90%; max-width:420px; border-radius:10px; position:relative; text-align:center; color: var(--text); }
+.closeBtn{ position:absolute; top:10px; right:10px; padding:5px 8px; background:#e53935; color:white; border-radius:5px; border:none; cursor:pointer; }
+.ownerBox{ border:2px solid var(--border); padding:10px; border-radius:8px; margin-top:10px; background: var(--bg); }
+.ownerBox img{ width:90px; height:90px; object-fit:cover; border-radius:50%; }
+/* Success animation */
+#successScreen{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:1000; justify-content:center; align-items:center; }
+.successCard{ background:linear-gradient(135deg,#1de9b6,#00bcd4); padding:30px; border-radius:12px; text-align:center; box-shadow:0 20px 50px rgba(0,0,0,0.5); transform:scale(0.7); animation: pop 700ms forwards; }
+@keyframes pop{ to{ transform:scale(1); } }
+.check{ font-size:64px; }
+/* small */
+canvas.signature{ border:2px dashed var(--border); border-radius:8px; width:100%; height:120px; }
+.small{ font-size:13px; }
+</style>
+</head>
+<body>
+
+<div class="container" id="formContainer">
+  <h2 id="title">🏠 Welcome To Prem Niwas 🙏  Renter Registration✨</h2>
+
+  <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; align-items:center;">
+    <button id="aboutBtn">🙎‍♂️About Owners</button>
+    <button id="darkModeBtn"> 💡Dark </button>
+    
+    <select id="langSelect"><option value="en">👉English</option><option value="hi">👉हिंदी</option><option value="bn">👉বাংলা</option><option value="bho">👉भोजपुरी</option></select>
+  </div>
+
+  <div class="grid">
+    <section>
+      <label data-i18n="🍁fullName">🍁Full Name *</label>
+      <input id="fullname" type="text" onkeypress="return /[a-zA-Z ]/.test(event.key)" required />
+
+      <label data-i18n="🧔‍♂️father"> 🧔‍♂️Father's Name</label>
+            <input id="father" type="text" onkeypress="return /[a-zA-Z ]/.test(event.key)" />
+
+      <label data-i18n="👩‍🦰mother">👩‍🦰Mother's Name</label>
+     <input id="mother" type="text" onkeypress="return /[a-zA-Z ]/.test(event.key)" />
+
+      <div class="row">
+        <div>
+          <label data-i18n="📞mobile">📞 Mobile Number *</label>
+          <input id="mobile" type="text" maxlength="10" onkeypress="return /[0-9]/.test(event.key)" required />
+        </div>
+        <div>
+          <label data-i18n="🗓️date">🗓️Date *</label>
+          <input id="date" type="date" required />
+        </div>
+      </div>
+
+      <label data-i18n="🪪aadhaar">🪪Aadhaar Number *</label>
+      <input id="aadhaar" type="text" maxlength="12" onkeypress="return /[0-9]/.test(event.key)" required />
+
+      <label data-i18n="🍁aadhaarFront">🍁Aadhaar Front *</label>
+      <input id="aadhaarFront" type="file" accept="image/*" />
+      <img id="aadhaarFrontPreview" class="preview" style="display:none;" alt="Aadhaar Front">
+
+      <label data-i18n="🍁aadhaarBack">🍁Aadhaar Back *</label>
+      <input id="aadhaarBack" type="file" accept="image/*" />
+      <img id="aadhaarBackPreview" class="preview" style="display:none;" alt="Aadhaar Back">
+
+      <label data-i18n="🍁address">🍁Full Address *</label>
+      <textarea id="address" required></textarea>
+
+      <div class="row">
+        <div>
+          <label data-i18n="📌pincode">📌Pincode *</label>
+          <input id="pincode" type="text" maxlength="6" required />
+        </div>
+        <div>
+          <label data-i18n="🗽state">🗽State *</label>
+          <input id="stateInput" list="stateList" required />
+          <datalist id="stateList"></datalist>
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label data-i18n="📍district">📍District *</label>
+          <input id="districtInput" list="districtList" required />
+          <datalist id="districtList"></datalist>
+        </div>
+        <div>
+          <label data-i18n="🏣block">🏣Block *</label>
+          <input id="BlockName" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div>
+          <label data-i18n="👮police"> 👮Police Station *</label>
+          <input id="PoliceStation" />
+        </div>
+        <div>
+          <label data-i18n="🏢city">🏢City</label>
+          <input id="CityName" />
+        </div>
+      </div>
+         <div class="row"> 
+        <div>
+        <label data-i18n="🏤postOffice">🏤Post Office *</label>
+      <select id="postofficeSelect"></select>
+       <div class="row"> 
+        </div>
+       <div class="row">
+            <div>
+        <label data-i18n="RoomNo ">Room No</label>
+          <input id="roomNo" type="number" maxlength="2" />
+
+          </div>
+          <div><label data-i18n="MeterReadings">Meter Readings</label>
+          <input id="meterReadings" type="number" />
+
+          </div>
+          <div><label data-i18n="Advance">Advance</label>
+         <input id="advance" type="number" />
+
+          </div>
+         
+          </div>
+           </div>
+            </div>
+            <div class="row">
+               <div><label data-i18n="Amount ">🪙Amount</label>
+              <input id="amount" type="number" />
+ 
+             </div>
+          <div>
+              <label data-i18n="validity">💥validity</label>
+         <input id="validity" type="text" />
+       
+
+          </div>
+          </div>
+          
+            
+      <div class="hr"></div>
+
+      <label data-i18n="✍️renterSign">✍️Renter Signature</label>
+      <canvas id="renterCanvas" class="signature"></canvas>
+      <div style="display:flex; gap:8px; margin-top:8px;"><button id="clearRenter">Clear</button><button id="saveRenter">Save</button></div>
+
+      <label data-i18n="✍️ownerSign" style="margin-top:10px;">✍️Owner Signature</label>
+      <canvas id="ownerCanvas" class="signature"></canvas>
+      <div style="display:flex; gap:8px; margin-top:8px;"><button id="clearOwner">Clear</button><button id="saveOwner">Save</button></div>
+
+    </section>
+
+    <section>
+       <h3 id="photo-header" style="margin:0 0 8px 0;">👇 Photo & Camera*</h3>
+      <label data-i18n="📷uploadPhoto">🌟Upload Photo</label>
+      <input id="🌟uploadphoto" type="file" accept="image/*" />
+      <img id="uploadPreview" class="preview" style="display:none;" alt="Profile Photo">
+
+      <label style="margin-top:10px;" data-i18n="cameraChoice"> 📸Camera Choice</label>
+      <select id="cameraSelect"><option value="user">🤳 Front</option><option value="environment">📷Back</option></select>
+
+      <button id="startCamBtn" style="margin-top:10px;">📷 Start Camera</button>
+      <button id="snapBtn" disabled>📷Take Photo</button>
+      <div class="muted" style="margin-top:8px;">💥Tip👉 Camera requires HTTPS or localhost. If camera not allowed, upload a photo.</div>
+       <div class="hr"></div>
+        <di class="footerNote" aria-live="polite">💥Submit requires Aadhaar front & back images, plus a main photo (upload or live) and agree checkbox. </div>
+                        
+      <video id="video" autoplay playsinline class="preview" style="display:none;"></video>
+      <canvas id="canvas" class="preview" style="display:none;"></canvas>
+
+      <div class="hr"></div>
+
+      <label>
+        <input type="checkbox" id="agree"> <span data-i18n="confirm">I confirm the above information is correct *</span>
+      </d>
+      </label>
+      <label>
+          <input type="checkbox" onchange="generateAgreement()" /><span data-i18n="confirm">A</span>
+     <d><div id="agreementBox" style="margin-top:10px; padding:10px; border:1px solid #ccc;"></div>
+     </d>
+     
+      </d>
+      </label>
+   
+
+      <div class="actions">
+        <button id="clearBtn">🧹Clear</button>
+        <button id="pdfBtn">📄PDF</button>
+        <button id="SheetBtn"> ✔️Submit (Save)</button>
+      </div>
+
+      <p class="muted small" id="notes">Note: WhatsApp auto-send requires a server endpoint using WhatsApp Business API or Twilio. See instructions after saving.</p>
+      <P>😎 Good manners are the best introduction🍁.</P>
+      <P>🙏जय श्री राम 🙏</P>
+
+    </section>
+  </div>
+</div>
+
+<div id="aboutModal">
+  <div class="modal-box">
+    <button class="closeBtn">&times;</button>
+    <h3 style="margin:0 0 10px 0;color:var(--accent);">Room Owners</h3>
+
+    <div class="ownerBox">
+      <img src="2me.jpg"  alt="Owner 1">
+      <h4> Room Owner : Mr. Prem kumar suman </h4>
+      <p>📞 9110950233</p>
+      <p>👨‍🏫 occupation:- Headteacher</p>
+      <p>🛏 Double Room — Attached Bathroom&Kitchen</p>
+      <P><P>🅿️ We will be providing you a small parking space.</P> </P>
+      <p>💥Rule👉 Quiet Hours After 10 PM,Gate closes at 10 PM. </p>
+    
+    </div>
+
+    <div class="ownerBox">
+      <img src="me.jpg"  alt="Owner 2">
+      <h4> Room Owner : Mr.Aditya </h4>
+      <p>📞 8678808319 </p>
+      <p>👨‍🎓 occupation:-BCA student. </p> 
+
+      <p>🛏Double Room — Attached Bathroom, Kitchen </P>
+         <P>🅿️ We will be providing you a small parking space.</P> 
+      
+       <div class="muted" style="margin-top:8px;">😎 Good manners are the best introduction.</div>
+       <div class="hr"></div>
+    </div>
+  </div>
+</div>
+
+<div id="successScreen"><div class="successCard"><div class="check">✔</div><h2 id="successMsg">Successfully Registered</h2><p id="successSub">Prem Niwas — Registration Complete</p></div></div>
+
+
+<script>
+// ----------------- Utilities -----------------
+const $ = id => document.getElementById(id);
+// Elements
+const darkModeBtn = $('darkModeBtn');
+const aboutBtn = $('aboutBtn');
+const aboutModal = $('aboutModal');
+const clearBtn = $('clearBtn');
+const pdfBtn = $('pdfBtn');
+const whatsappBtn = $('whatsappBtn');
+const SheetBtn = $('SheetBtn');
+const startCamBtn = $('startCamBtn');
+const snapBtn = $('snapBtn');
+const video = $('video');
+const canvas = $('canvas');
+const uploadPreview = $('uploadPreview');
+const uploadphoto = $('uploadphoto');
+const aadhaarFront = $('aadhaarFront');
+const aadhaarBack = $('aadhaarBack');
+const aadhaarFrontPreview = $('aadhaarFrontPreview');
+const aadhaarBackPreview = $('aadhaarBackPreview');
+const cameraSelect = $('cameraSelect');
+const pincode = $('pincode');
+const stateInput = $('stateInput');
+const districtInput = $('districtInput');
+const stateList = $('stateList');
+const districtList = $('districtList');
+const postofficeSelect = $('postofficeSelect');
+const agree = $('agree');
+const langSelect = $('langSelect');
+const renterCanvas = $('renterCanvas');
+const ownerCanvas = $('ownerCanvas');
+const clearRenter = $('clearRenter');
+const clearOwner = $('clearOwner');
+const saveRenter = $('saveRenter');
+const saveOwner = $('saveOwner');
+const successScreen = $('successScreen');
+const successMsg = $('successMsg');
+
+let stream = null;
+let renterSignatureData = null;
+let ownerSignatureData = null;
+
+// ---------------- Theme ----------------
+(function initTheme(){
+  const saved = document.documentElement.getAttribute('data-theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  darkModeBtn.textContent = saved === 'dark' ? '💡Light ' : ' 🕯️Dark ';
+})();
+
+darkModeBtn.onclick = () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  darkModeBtn.textContent = next === 'dark' ? ' 💡Light ' : ' 🕯️Dark ';
+};
+
+// --------------- About Modal ----------------
+aboutBtn.onclick = () => aboutModal.style.display = 'flex';
+document.querySelector('.closeBtn').onclick = () => aboutModal.style.display = 'none';
+window.addEventListener('click', e => { if (e.target === aboutModal) aboutModal.style.display = 'none'; });
+
+// --------------- Simple i18n ----------------
+const i18n = {
+  en: {
+    fullName: 'Full Name *', father: "Father's Name", mother: "Mother's Name", mobile: 'Mobile Number *', date: 'Date *', aadhaar: 'Aadhaar Number *', aadhaarFront: 'Aadhaar Front *', aadhaarBack: 'Aadhaar Back *', address: 'Full Address *', pincode:'Pincode *', state:'State *', district:'District *', block:'Block *', police:'Police Station *', city:'City', postOffice:'Post Office *', renterSign:'Renter Signature', ownerSign:'Owner Signature', uploadPhoto:'Upload Photo', cameraChoice:'Camera Choice', confirm:'I confirm the above information is correct *'
+  },
+  hi: {
+    fullName: 'पूरा नाम *', father: 'पिता का नाम', mother: 'माता का नाम', mobile: 'मोबाइल नंबर *', date: 'तारीख *', aadhaar: 'आधार संख्या *', aadhaarFront: 'आधार सामने *', aadhaarBack: 'आधार पीछे *', address: 'पूरा पता *', pincode:'पिनकोड *', state:'राज्य *', district:'ज़िला *', block:'ब्लॉक *', police:'थाना *', city:'शहर', postOffice:'डाकघर *', renterSign:'किरायेदार हस्ताक्षर', ownerSign:'मालिक हस्ताक्षर', uploadPhoto:'फोटो अपलोड करें', cameraChoice:'कैमरा चुनें', confirm:'मैं पुष्टि करता/करती हूँ कि ऊपर दी गई जानकारी सही है *'
+  },
+  bn: {
+    fullName: 'পূর্ণ নাম *', father: 'পিতার নাম', mother: 'মাতার নাম', mobile: 'মোবাইল নম্বর *', date: 'তারিখ *', aadhaar: 'আধার নম্বর *', aadhaarFront: 'আধার সামনে *', aadhaarBack: 'আধার পেছনে *', address: 'পুরো ঠিকানা *', pincode:'পিনকোড *', state:'রাষ্ট্র *', district:'জেলা *', block:'ব্লক *', police:'থানা *', city:'শহর', postOffice:'ডাকঘর *', renterSign:'ভাড়াটিয়া স্বাক্ষর', ownerSign:'মালিকের স্বাক্ষর', uploadPhoto:'ছবি আপলোড করুন', cameraChoice:'ক্যামেরা নির্বাচন', confirm:'আমি নিশ্চিত করছি যে উপরোক্ত তথ্য সঠিক *'
+  },
+  bho: {
+    fullName: 'पूरा नाम *', father: 'पिता के नाम', mother: 'माई के नाम', mobile: 'मोबाइल नंबर *', date: 'तारीख *', aadhaar: 'आधार नंबर *', aadhaarFront: 'आधार आगे *', aadhaarBack: 'आधार पीछे *', address: 'पूरा पता *', pincode:'पिनकोड *', state:'राज्य *', district:'जिला *', block:'ब्लॉक *', police:'थाना *', city:'शहर', postOffice:'डाकघर *', renterSign:'किरायेदार सिग्नेचर', ownerSign:'मालिक सिग्नेचर', uploadPhoto:'फोटो अपलोड करीं', cameraChoice:'कैमरा चूनि', confirm:'हम पुष्टि करत बानी कि ऊपर के जानकारी सही बा *'
+  }
+};
+
+function applyLang(lang){
+  const map = i18n[lang] || i18n.en;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ const key = el.getAttribute('data-i18n'); if(map[key]) el.textContent = map[key]; });
+}
+langSelect.addEventListener('change', () => applyLang(langSelect.value));
+applyLang('en');
+
+// --------------- State List (try external) ---------------
+(async function loadStates(){
+  try{
+    const res = await fetch('https://cdn-api.co-vin.in/api/v2/admin/location/states');
+    const data = await res.json();
+    if(Array.isArray(data.states)){
+      stateList.innerHTML = data.states.map(s=>`<option value="${s.state_name}"></option>`).join('');
+    }
+  }catch(e){ console.warn('Could not load states list', e); }
+})();
+
+// --------------- Pincode lookup ---------------
+if (pincode) {
+  pincode.addEventListener('keyup', async ()=>{
+    const pin = pincode.value.trim(); if(pin.length !== 6) return;
+    try{
+      const res = await fetch(`https://api.postalpincode.in/pincode/${pin}`);
+      const data = await res.json();
+      if(!data || !data[0] || data[0].Status !== 'Success') return;
+      const poList = data[0].PostOffice || [];
+      if(poList.length){ stateInput.value = poList[0].State || ''; districtInput.value = poList[0].District || ''; }
+      const districts = [...new Set(poList.map(po=>po.District).filter(Boolean))];
+      districtList.innerHTML = districts.map(d=>`<option value="${d}"></option>`).join('');
+      postofficeSelect.innerHTML = poList.map(po=>`<option value="${po.Name}">${po.Name} (${po.Circle || ''})</option>`).join('');
+    }catch(err){ console.warn('Pincode lookup failed', err); }
+  });
+}
+
+// --------------- File previews (Aadhaar + Photo) ---------------
+function fileToPreview(inputEl, imgEl, onLoad){
+  if(!inputEl) return;
+  inputEl.addEventListener('change', e=>{
+    const f = e.target.files && e.target.files[0];
+    if(!f) { imgEl.style.display='none'; imgEl.src=''; return; }
+    const url = URL.createObjectURL(f);
+    imgEl.src = url; imgEl.style.display = 'block';
+    if(onLoad) onLoad(f, imgEl);
+  });
+}
+
+// OCR on Aadhaar front to extract number (best-effort)
+async function runAadhaarOCR(file, imgEl){
+  try{
+    if(!window.Tesseract) return null;
+    const worker = Tesseract.createWorker({ logger: m=>console.log(m) });
+    await worker.load(); await worker.loadLanguage('eng'); await worker.initialize('eng');
+    const { data: { text } } = await worker.recognize(imgEl);
+    await worker.terminate();
+    const m = text.replace(/[^0-9]/g,'').match(/(\d{12})/);
+    if(m){ return m[0]; }
+    return null;
+  }catch(e){ console.warn('OCR failed', e); return null; }
+}
+
+fileToPreview(aadhaarFront, aadhaarFrontPreview, async (file,img)=>{
+  setTimeout(async ()=>{
+    const extracted = await runAadhaarOCR(file, img);
+    if(extracted){
+      console.log('Extracted Aadhaar:', extracted);
+      const inputVal = document.getElementById('aadhaar').value.trim();
+      if(inputVal && inputVal !== extracted){
+        alert('Aadhaar number in the photo does not match the typed Aadhaar number. Please verify.');
+      }
+    }
+  }, 400);
+});
+fileToPreview(aadhaarBack, aadhaarBackPreview);
+fileToPreview(uploadphoto, uploadPreview, (file,img)=>{ addWatermarkToPreview(img); });
+
+// --------------- Camera (with watermark) ---------------
+async function startCamera(){
+  try{
+    const facing = cameraSelect.value || 'user';
+    const constraints = { video: { facingMode: { exact: facing } } };
+    try{ stream = await navigator.mediaDevices.getUserMedia(constraints); }
+    catch(e){ stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing } }); }
+    video.srcObject = stream; video.style.display='block'; snapBtn.disabled = false; uploadPreview.style.display='none';
+  }catch(err){ console.error('Camera error', err); alert('Camera not accessible. Check permissions or try another device.'); }
+}
+
+startCamBtn.onclick = ()=>{
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; video.style.display='none'; snapBtn.disabled=true; startCamBtn.textContent='Start Camera'; return; }
+  startCamera(); startCamBtn.textContent='Stop Camera';
+};
+
+snapBtn.onclick = ()=>{
+  try{
+    canvas.width = video.videoWidth || 640; canvas.height = video.videoHeight || 480; const ctx = canvas.getContext('2d'); ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    addWatermarkToCanvas(canvas, 'Prem Niwas - Verified');
+    const data = canvas.toDataURL('image/jpeg', 0.9);
+    uploadPreview.src = data; uploadPreview.style.display='block';
+    if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; video.style.display='none'; snapBtn.disabled=true; startCamBtn.textContent='Start Camera'; }
+  }catch(e){ console.error('Snapshot failed', e); }
+};
+
+function addWatermarkToCanvas(cnv, text){ const ctx = cnv.getContext('2d'); const ts = new Date().toLocaleString(); ctx.font = `${Math.max(cnv.width/40,18)}px Arial`; ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=2; const t = `${text} • ${ts}`; ctx.textBaseline='bottom'; ctx.fillText(t, 12, cnv.height-12); ctx.strokeText(t,12,cnv.height-12); }
+function addWatermarkToPreview(imgEl){ const img = new Image(); img.crossOrigin = 'anonymous'; img.onload = ()=>{ const c = document.createElement('canvas'); c.width = img.width || 800; c.height = img.height || 800; const ctx = c.getContext('2d'); ctx.drawImage(img,0,0,c.width,c.height); addWatermarkToCanvas(c, 'Prem Niwas - Verified'); imgEl.src = c.toDataURL('image/jpeg',0.9); imgEl.style.display='block'; }; img.src = imgEl.src || URL.createObjectURL(new Blob()); }
+
+// --------------- Signature canvas ----------------
+function setupSignatureCanvas(cnv){
+  const ctx = cnv.getContext('2d'); let drawing=false; let lastX=0,lastY=0;
+  function resize(){
+    const ratio = window.devicePixelRatio || 1;
+    const w = cnv.clientWidth || 400;
+    const h = cnv.clientHeight || 120;
+    cnv.width = w * ratio; cnv.height = h * ratio;
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+    ctx.lineJoin='round'; ctx.lineCap='round'; ctx.lineWidth=2; ctx.strokeStyle = getComputedStyle(document.body).color || '#000';
+  }
+  resize(); window.addEventListener('resize', resize);
+  function getPos(e){
+    const r=cnv.getBoundingClientRect();
+    const x = (e.touches ? e.touches[0].clientX : e.clientX)-r.left;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY)-r.top;
+    return {x,y};
+  }
+  function start(e){ drawing=true; const p = getPos(e); lastX=p.x; lastY=p.y; e.preventDefault(); }
+  function draw(e){ if(!drawing) return; const p = getPos(e); ctx.beginPath(); ctx.moveTo(lastX,lastY); ctx.lineTo(p.x,p.y); ctx.stroke(); lastX=p.x; lastY=p.y; e.preventDefault(); }
+  function end(){ drawing=false; }
+  cnv.addEventListener('mousedown', start); cnv.addEventListener('touchstart', start);
+  cnv.addEventListener('mousemove', draw); cnv.addEventListener('touchmove', draw);
+  cnv.addEventListener('mouseup', end); cnv.addEventListener('mouseleave', end); cnv.addEventListener('touchend', end);
+  return { clear: ()=>{ ctx.clearRect(0,0,cnv.width,cnv.height); }, dataURL: ()=>cnv.toDataURL('image/png') };
+}
+
+const renterSig = setupSignatureCanvas(renterCanvas);
+const ownerSig = setupSignatureCanvas(ownerCanvas);
+clearRenter.onclick = ()=> renterSig.clear();
+clearOwner.onclick = ()=> ownerSig.clear();
+saveRenter.onclick = ()=>{ renterSignatureData = renterSig.dataURL(); alert('Renter signature saved'); };
+saveOwner.onclick = ()=>{ ownerSignatureData = ownerSig.dataURL(); alert('Owner signature saved'); };
+
+// --------------- Clear Form ---------------
+clearBtn.onclick = ()=>{
+  document.querySelectorAll('input[type=text], input[type=date], textarea').forEach(i=>i.value='');
+  document.querySelectorAll('input[type=file]').forEach(i=>i.value='');
+  document.querySelectorAll('select').forEach(s=>{ if(s.id!=='cameraSelect' && s.id!=='langSelect') s.selectedIndex = -1; });
+  document.querySelectorAll('.preview').forEach(img=>{ img.style.display='none'; img.src=''; });
+  agree.checked = false;
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; video.style.display='none'; snapBtn.disabled=true; }
+  renterSig.clear(); ownerSig.clear(); renterSignatureData = ownerSignatureData = null;
+};
+
+// --------------- Duplicate checker (localStorage) ---------------
+function loadEntries(){ try{ return JSON.parse(localStorage.getItem('prem_entries')||'[]'); }catch(e){ return []; } }
+function saveEntry(obj){ const entries = loadEntries(); entries.push(obj); localStorage.setItem('prem_entries', JSON.stringify(entries)); }
+function existsAadhaar(aad){ const entries = loadEntries(); return entries.some(e=>e.aadhaar === aad); }
+
+// NOTE: Sending PDF programmatically requires a server that uses WhatsApp Business API or Twilio. This client posts the PDF blob + mobile number to /api/sendWhatsApp
+  
+     // generate but do not save
+
+// --------------- Submit (save locally + animated success) ---------------
+SheetBtn.onclick = async ()=>{
+  if(!agree.checked) return alert('Please confirm the information.');
+  const aad = document.getElementById('aadhaar').value.trim(); if(!aad || aad.length !== 12) return alert('Enter valid 12-digit Aadhaar');
+  if(existsAadhaar(aad)) return alert('Duplicate entry. Aadhaar already registered.');
+  // collect data
+  const data = {
+    fullname: document.getElementById('fullname').value.trim(), father: document.getElementById('father').value.trim(), mother: document.getElementById('mother').value.trim(), mobile: document.getElementById('mobile').value.trim(), date: document.getElementById('date').value, aadhaar: aad, address: document.getElementById('address').value.trim(), pincode: pincode ? pincode.value : '', state: stateInput.value, district: districtInput.value, postoffice: postofficeSelect.value, time: new Date().toISOString(), renterSign: renterSignatureData, ownerSign: ownerSignatureData
+  };
+  saveEntry(data);
+  // Show success animation
+  successScreen.style.display='flex'; setTimeout(()=> successScreen.style.display='none', 2500);
+  // auto-generate PDF and offer download
+  try{
+    const pdfBlob = await generatePdfBlob(true);
+    const url = URL.createObjectURL(pdfBlob);
+    const a = document.createElement('a'); a.href = url; a.download = `Prem_Niwas_Renter_${(data.fullname||'guest').replace(/\s+/g,'_')}.pdf`; a.click();
+  }catch(err){ console.warn('PDF generation after submit failed', err); }
+};
+
+// --------------- PDF Generation (full, with header/footer/stamp) ---------------
+async function generatePdfBlob(returnBlobOnly=false){
+  try{
+    const element = document.getElementById('formContainer');
+    // clone and prepare
+    const clone = element.cloneNode(true);
+    clone.style.boxShadow='none'; clone.style.margin='0'; clone.style.padding='20px'; clone.style.maxWidth='800px';
+    // replace signature canvases with saved images
+    const sigEls = clone.querySelectorAll('canvas.signature');
+    if(sigEls && sigEls.length){
+      if(renterSignatureData && sigEls[0]){ const img = document.createElement('img'); img.src = renterSignatureData; img.style.width='100%'; sigEls[0].parentNode.replaceChild(img, sigEls[0]); }
+      if(ownerSignatureData && sigEls[1]){ const img2 = document.createElement('img'); img2.src = ownerSignatureData; img2.style.width='100%'; sigEls[1].parentNode.replaceChild(img2, sigEls[1]); }
+    }
+    // ensure photo previews are present
+    if(uploadPreview && uploadPreview.src){
+      const up = clone.querySelector('#uploadPreview'); if(up) up.src = uploadPreview.src;
+    }
+    if(aadhaarFrontPreview && aadhaarFrontPreview.src){
+      const af = clone.querySelector('#aadhaarFrontPreview'); if(af) af.src = aadhaarFrontPreview.src;
+    }
+    if(aadhaarBackPreview && aadhaarBackPreview.src){
+      const ab = clone.querySelector('#aadhaarBackPreview'); if(ab) ab.src = aadhaarBackPreview.src;
+    }
+
+    // add header/footer/stamp elements
+    const header = document.createElement('div'); header.innerHTML = `<div style="text-align:center;margin-bottom:8px;"><h1 style="margin:0;color:#0b84ff;">Prem Niwas - Renter Registration</h1><div style="font-size:12px;color:#555;">Official Document</div></div>`;
+    const footer = document.createElement('div'); footer.innerHTML = `<div style="position:relative;text-align:center;margin-top:8px;font-size:12px;color:#555;">Generated on: ${new Date().toLocaleString()} • Prem Niwas</div>`;
+    clone.insertBefore(header, clone.firstChild);
+    clone.appendChild(footer);
+    const stamp = document.createElement('div'); stamp.innerHTML = `<svg width="120" height="120" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="#b71c1c" stroke-width="4" fill="rgba(183,28,28,0.08)"></circle><text x="50%" y="52%" dominant-baseline="middle" text-anchor="middle" style="font-size:9px;fill:#b71c1c;">PREM NIWAS</text></svg>`;
+    stamp.style.position='absolute'; stamp.style.right='20px'; stamp.style.top='20px'; clone.appendChild(stamp);
+
+    // append clone off-screen so html2canvas can render images/styles properly
+    clone.style.position = 'fixed';
+    clone.style.left = '-9999px';
+    clone.style.top = '0px';
+    document.body.appendChild(clone);
+
+    const opt = { scale:2, useCORS:true, allowTaint:false, logging:false, imageTimeout:15000 };
+    const canvasEl = await html2canvas(clone, opt);
+
+    // remove the clone
+    document.body.removeChild(clone);
+
+    // Create PDF using proper jsPDF reference
+    const imgData = canvasEl.toDataURL('image/png');
+    const { jsPDF } = window.jspdf || window;
+    const pdf = new jsPDF('p','mm','a4');
+    const pdfWidth = 210;
+    const pdfHeight = (canvasEl.height * pdfWidth) / canvasEl.width;
+
+    if(pdfHeight <= 297){
+      pdf.addImage(imgData,'PNG',0,0,pdfWidth,pdfHeight);
+    }else{
+      let remainingHeight = canvasEl.height; let position = 0;
+      const pageHeightPx = Math.floor((canvasEl.width * 297)/pdfWidth);
+      while(remainingHeight > 0){
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvasEl.width;
+        pageCanvas.height = Math.min(pageHeightPx, remainingHeight);
+        const pageCtx = pageCanvas.getContext('2d');
+        pageCtx.drawImage(canvasEl, 0, position, canvasEl.width, pageCanvas.height, 0, 0, pageCanvas.width, pageCanvas.height);
+        const pageData = pageCanvas.toDataURL('image/png');
+        if(position === 0) pdf.addImage(pageData,'PNG',0,0,pdfWidth,(pageCanvas.height*pdfWidth)/pageCanvas.width);
+        else { pdf.addPage(); pdf.addImage(pageData,'PNG',0,0,pdfWidth,(pageCanvas.height*pdfWidth)/pageCanvas.width); }
+        position += pageCanvas.height; remainingHeight -= pageCanvas.height;
+      }
+    }
+
+    // footer text on each page
+    const totalPages = pdf.getNumberOfPages();
+    for(let i=1;i<=totalPages;i++){ pdf.setPage(i); pdf.setFontSize(9); pdf.text(`Prem Niwas • Official Document`, 10, 287); }
+
+    const pdfBlob = pdf.output('blob');
+    if(returnBlobOnly) return pdfBlob;
+    const fileName = `Prem_Niwas_Renter_Form_${(document.getElementById('fullname').value||'guest').replace(/\s+/g,'_')}.pdf`;
+    pdf.save(fileName);
+    return pdfBlob;
+  }catch(err){
+    console.error('PDF generation error:', err);
+    throw err;
+  }
+}
+
+pdfBtn.onclick = async ()=>{
+  if(!agree.checked){ if(!confirm('Agreement not checked. Continue to generate PDF?')) return; }
+  try{ await generatePdfBlob(false); }catch(err){ console.error('PDF generation failed', err); alert('PDF generation failed. See console.'); }
+};
+
+// --------------- Aadhaar duplicate + OCR compare on form submit ---------------
+const aadInput = document.getElementById('aadhaar');
+if(aadInput){
+  aadInput.addEventListener('change', e=>{
+    const val = e.target.value.replace(/\D/g,''); if(val.length===12 && existsAadhaar(val)){ alert('This Aadhaar is already registered (duplicate).'); }
+  });
+}
+
+// --------------- Helpful instructions for WhatsApp server (show once) ---------------
+(function showWhatsAppNote(){
+  console.log('To enable WhatsApp auto-send: implement a server endpoint at POST /api/sendWhatsApp that accepts form-data: mobile (10-digit), message (string), file (pdf). Use WhatsApp Business API or Twilio to send message+media. Keep API keys secret.');
+})();
+
+</script>
+<script>
+function generateAgreement() {
+    const name = document.getElementById("fullname").value;
+    const room = document.getElementById("roomNo").value;
+    const meter = document.getElementById("meterReadings").value;
+    const advance = document.getElementById("advance").value;
+    const amount = document.getElementById("amount").value;
+    const date = document.getElementById("date").value;
+    const validity = document.getElementById("validity").value;
+
+    if (!name || !room || !meter || !amount || !date || !validity) {
+        document.getElementById("agreementBox").innerHTML =
+            "<p style='color:red;'>⚠️ Please fill all fields first.</p>";
+        return;
+    }
+
+    const agreementText = `
+                    मैं ${name}, आज दिनांक ${date} से रूम नंबर ${room}
+                     में रहने आया/आयी  हूँ। मेरा वर्तमान मीटर रीडिंग ${meter} है।
+                      किराया ${amount} रुपये प्रति माह होगा और मेरी वैधता\n ${validity} है।
+
+                         * प्रत्येक वर्ष 5% की वृद्धि भी होगी।
+                           * बिजली का बिल अलग से देना होगा।"
+    `;
+
+    document.getElementById("agreementBox").innerHTML = agreementText;
+}
+</script>
+
+</body>
+</html>
